@@ -40,7 +40,7 @@ fn test_site(url: &str, sleep_duration: &Duration) -> error::Result<()> {
                 thread::sleep(sleep_duration.clone());
             }
             other => {
-                println!("Request failed. Status: {}", &other);
+                println!("{}: Request failed. Status: {}", &start.ctime(), &other);
                 return Ok(());
             }
         }
