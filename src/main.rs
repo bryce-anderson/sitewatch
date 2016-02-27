@@ -1,11 +1,13 @@
 extern crate getopts;
 extern crate hyper;
 extern crate time;
+extern crate regex;
 
 use std::io::Read;
 
 use getopts::Options;
 use std::env;
+use regex::Regex;
 
 use std::time::Duration;
 use std::thread;
@@ -62,7 +64,7 @@ fn main() {
     let program = args[0].clone();
 
     let mut opts = Options::new();
-    opts.optopt("d", "duration", "set the wait duration between probes in seconds", "DURATION");
+    opts.optopt("d", "duration", "set the wait duration between probes postfixed with [smh] for units", "DURATION");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -70,10 +72,25 @@ fn main() {
     };
 
     let duration = if let Some(d) = matches.opt_str("d") {
-        match d.parse() {
-            Ok(d) => Duration::from_secs(d),
-            Err(f) => {
-                println!("Invalid duration: {}", f.to_string());
+        let re = Regex::new(r"(?P<duration>\d+)(?P<units>[hms])").unwrap();
+
+        let caps = if let Some(caps) = re.captures(&d) {
+            caps
+        } else {
+            print_usage(&program, opts);
+            return;
+        };
+
+        match (caps.name("duration").map(|d| d.parse().unwrap()),
+               caps.name("units")) {
+            (None,_) => {
+                print_usage(&program, opts);
+                return;
+            }
+            (Some(d), Some("h")) => Duration::from_secs(d*60*60),
+            (Some(d), Some("m")) => Duration::from_secs(d*60),
+            (Some(d), Some("s")) => Duration::from_secs(d),
+            _ => {
                 print_usage(&program, opts);
                 return;
             }
